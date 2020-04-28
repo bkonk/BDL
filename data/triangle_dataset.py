@@ -44,4 +44,4 @@ class triangleDataset(data.Dataset):
         image -= self.mean
         image = image.transpose((2, 0, 1))
 
-        return image.copy(), label.copy()
+        return image.copy(), label.copy(),[],[]
