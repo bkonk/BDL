@@ -2,6 +2,7 @@ from data.gta5_dataset import GTA5DataSet
 from data.cityscapes_dataset import cityscapesDataSet
 from data.synthia_dataset import SYNDataSet
 from data.triangle_dataset import triangleDataset
+from data.triangle_dataset import triangleDatasetTgt
 from data.cityscapes_dataset_label import cityscapesDataSetLabel
 import numpy as np
 from torch.utils import data
@@ -29,7 +30,7 @@ def CreateSrcDataLoader(args):
 def CreateTrgDataLoader(args):
     if args.source == 'triangle':
         # for simple triangle dataset
-        target_dataset = triangleDataset(args.data_dir_target, args.data_list_target, max_iters=args.num_steps * args.batch_size,
+        target_dataset = triangleDatasetTgt(args.data_dir_target, args.data_list_target, max_iters=args.num_steps * args.batch_size,
                                     crop_size=image_sizes['triangle'], mean=IMG_MEAN)
         target_dataloader = data.DataLoader(target_dataset, batch_size=args.batch_size, shuffle=True,
                                             num_workers=args.num_workers, pin_memory=True)
