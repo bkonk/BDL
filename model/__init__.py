@@ -16,7 +16,7 @@ def CreateModel(args):
             return model
         
     if args.model == 'VGG':
-        model = VGG16_FCN8s(num_classes=19, init_weights=args.init_weights, restore_from=args.restore_from)
+        model = VGG16_FCN8s(num_classes=args.num_classes, init_weights=args.init_weights, restore_from=args.restore_from)
         if args.set == 'train':
             optimizer = optim.Adam(
             [
