@@ -30,7 +30,6 @@ class triangleDataset(data.Dataset):
         image = Image.open(osp.join(self.root, "{0}".format(img_name))).convert('RGB')
         label = Image.open(osp.join(self.root, "{0}".format(mask_name)))
 
-        label[label > 0] = 1  # only one class
 
         # resize
         image = image.resize(self.crop_size, Image.BICUBIC)
@@ -38,6 +37,8 @@ class triangleDataset(data.Dataset):
 
         image = np.asarray(image, np.float32)
         label = np.asarray(label, np.float32)
+
+        label[label > 0] = 1  # only one class
 
         image = image[:, :, ::-1]  # change to BGR
         image -= self.mean
