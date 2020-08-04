@@ -9,6 +9,7 @@ import os.path as osp
 import os
 import numpy as np
 from model import CreateModel
+from model import fcn8s
 
 palette = [128, 64, 128, 244, 35, 232, 70, 70, 70, 102, 102, 156, 190, 153, 153, 153, 153, 153, 250, 170, 30,
            220, 220, 0, 107, 142, 35, 152, 251, 152, 70, 130, 180, 220, 20, 60, 255, 0, 0, 0, 0, 142, 0, 0, 70,
@@ -98,7 +99,7 @@ def main():
     
     for index, batch in enumerate(targetloader):
         if index % 100 == 0:
-            print '%d processd' % index
+            print('%d processd' % index)
         image, _, name = batch
         output = model(Variable(image).cuda())
         output = nn.functional.softmax(output, dim=1)
@@ -113,12 +114,46 @@ def main():
         
     compute_mIoU(args.gt_dir, args.save, args.devkit_dir, args.restore_from)    
 
+def eval_single_img(img,model):
+    img = img[:, :, ::-1]  # change to BGR
+    img -= [128,128,128]
+    img = img.transpose((2, 0, 1))
+    img_t = torch.from_numpy(img.copy())
+    img_batch = img_t.unsqueeze_(0)
+    output = model(Variable(img_batch).cuda())
+
+    output = nn.functional.softmax(output, dim=1)
+    output = nn.functional.upsample(output, (512, 512), mode='bilinear', align_corners=True).cpu().data[0].numpy()
+    output = output.transpose(1, 2, 0)
+    #output[output>0.5] = 1
+    output *= 255
+
+    output = output[:,:,1]
+    new_mask = Image.fromarray(output.astype(np.uint8))
+    new_mask.save('tmp.png')
+
+
+def main_1():
+    '''
+    Test single image
+    Zhe Zhu,2020/04/30
+    '''
+    img_file = '/mnt/sdc/dataset/domain_adaptation/triangle/domain_1/images/train_00000.png'
+    img = Image.open(img_file).convert('RGB')
+    img = np.asarray(img,np.float32)
+
+    weights_file = '/mnt/sdc/dataset/domain_adaptation/snapshots/triangle/triangle_20000.pth'
+    model = fcn8s.VGG16_FCN8s(num_classes=2, init_weights=weights_file)
+    model.eval()
+    model.cuda()
+    eval_single_img(img,model)
+
 if __name__ == '__main__':
     
     os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')
     memory_gpu=[int(x.split()[2]) for x in open('tmp','r').readlines()]
     os.system('rm tmp')    
     os.environ["CUDA_VISIBLE_DEVICES"] = str(np.argmax(memory_gpu))  
-    main()
+    main_1()
     
     
