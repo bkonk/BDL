@@ -219,9 +219,10 @@ def GetImageMaskData(file_xml, dcm_files, new_dims):
 
     return im_vol, mask
 
-def GetImageMaskDataOri(file_xml, dcm_files):
+def GetImageMaskDataOri(file_xml, dcm_files, reverse):
     # open up xml file and grab the list of ROIs without resize
     # Zhe Zhu revised 2020/07/12
+    # Updated 2020/08/31: add a parameter to decide whether perform reverse
 
     with open(file_xml) as f:
 
@@ -258,7 +259,7 @@ def GetImageMaskDataOri(file_xml, dcm_files):
             # locs[err:][:]=[]
             #        break
 
-    z_reversed = False
+    z_reversed = reverse
     # sort
 
     locs.sort(key=operator.itemgetter(1))
@@ -286,7 +287,6 @@ def GetImageMaskDataOri(file_xml, dcm_files):
         window_width = dicom_img.WindowWidth
     else:
         print("No Window Width, use default")
-    #    jpg_scale = 255.0
 
     lower_limit = window_center - (window_width / 2)
 
@@ -367,7 +367,17 @@ def ExtractImgAndMask(xml_file,dicom_file_list,output_folder):
     '''
     Extract the image and mask, and save to the target folder
     Zhe Zhu, 2020/07/12
+    Update 2020/09/02: use the trick Brandon suggests to decide if reverse
     '''
+    # decide if reverse first
+    dicom_file_list.sort()
+    locs = [(d, float(dcm.dcmread(d).SliceLocation)) for d in dicom_file_list]
+
+    if locs[1] > locs[0]:
+        reverse = False
+    else:
+        reverse = True
+    print("Reverse: "+str(reverse))
     output_img_folder = os.path.join(output_folder,'img')
     output_mask_folder = os.path.join(output_folder,'mask')
 
@@ -376,7 +386,7 @@ def ExtractImgAndMask(xml_file,dicom_file_list,output_folder):
     if not os.path.exists(output_mask_folder):
         os.makedirs(output_mask_folder)
 
-    img_vol, mask_data = GetImageMaskDataOri(xml_file, dicom_file_list)
+    img_vol, mask_data = GetImageMaskDataOri(xml_file, dicom_file_list,reverse)
 
     assert img_vol.shape == mask_data.shape
 

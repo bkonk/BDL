@@ -7,6 +7,59 @@ import numpy as np
 import ct_mri.roi as roi
 import time
 import re
+import cv2
+import pydicom as dcm
+
+def blend(img, mask, color, coef):
+    '''
+    Blend the ct&mri with the segmentation
+    img: 3-channel image(h*w*3) (0~255)
+    mask: 1-channel mask (0~1)
+    color: (r,g,b) tuple (0~255)
+    coef: 0.0~1.0
+    Zhe Zhu, 2020/07/27
+    '''
+    img_height, img_width, nc = img.shape
+    color_img = np.ones(img.shape)
+    for i in range(img_height):
+        for j in range(img_width):
+            color_img[i,j,:] = color
+
+    blend_mask = mask*coef
+    blend_mask = blend_mask[...,np.newaxis]
+    blend_mask = np.concatenate((blend_mask,blend_mask,blend_mask),axis=2)
+    blend_mask /= 255.0
+
+    blended_img = img*(1-blend_mask)+color_img*blend_mask
+
+    return blended_img
+
+def rearrange_mask(input_series_folder,output_series_folder,new_rank):
+    '''
+    Re-arrange the mask & image
+    Zhe Zhu, 2020/09/17
+    '''
+    input_img_folder = os.path.join(input_series_folder,'img')
+    input_mask_folder = os.path.join(input_series_folder,'mask')
+
+    if not os.path.exists(output_series_folder):
+        os.makedirs(output_series_folder)
+
+    # copy images directly
+    output_img_folder = os.path.join(output_series_folder,'img')
+    shutil.copytree(input_img_folder,output_img_folder)
+
+    # copy masks one by one
+    output_mask_folder = os.path.join(output_series_folder,'mask')
+    if not os.path.exists(output_mask_folder):
+        os.makedirs(output_mask_folder)
+    for i in range(len(new_rank)):
+        input_mask_name = '{:04d}.png'.format(i)
+        input_mask_file = os.path.join(input_mask_folder,input_mask_name)
+        output_mask_name = '{:04d}.png'.format(new_rank[i])
+        output_mask_file = os.path.join(output_mask_folder,output_mask_name)
+        shutil.copyfile(input_mask_file,output_mask_file)
+
 
 def task_1():
     '''
@@ -487,6 +540,104 @@ def task_13():
     print('Val set has {} patients'.format(len(val_patient_list)))
 
 
+def task_14():
+    '''
+    Blend the mask and image for manual verification
+    Zhe Zhu, 2020/08/05
+    '''
+    print("Task 14, blend the image and mask for verification")
+    dataset_folder = '/mnt/sdc/Liver/dataset/v2'
+    color = (0,0,255) # use red to mark the annotation
+
+    patient_folder_list = glob.glob(dataset_folder+'/*')
+    for patient_folder in patient_folder_list:
+        series_folder_list = glob.glob(patient_folder+'/*')
+        for series_folder in series_folder_list:
+            img_folder = os.path.join(series_folder,'img')
+            mask_folder = os.path.join(series_folder,'mask')
+            blend_folder = os.path.join(series_folder,'blend')
+
+            if not os.path.exists(blend_folder):
+                os.makedirs(blend_folder)
+
+            img_file_list = glob.glob(img_folder+'/*')
+            img_num = len(img_file_list)
+
+            for i in range(img_num):
+                img_file = os.path.join(img_folder,'{:04d}.png'.format(i))
+                mask_file = os.path.join(mask_folder,'{:04d}.png'.format(i))
+
+                img = cv2.imread(img_file,cv2.IMREAD_COLOR)
+                mask = cv2.imread(mask_file,cv2.IMREAD_GRAYSCALE)
+
+                marked = blend(img,mask,color,0.5)
+
+                cv2.imwrite(os.path.join(blend_folder,'{:04d}.png').format(i),marked)
+
+def task_15():
+    '''
+    Debug the order along z-axis
+    Zhe Zhu, 2020/08/31
+    '''
+    dicom_file = '/mnt/sdc/Liver/segmentation_processed/dynarterial/LRML_0001_dynarterial/dicoms/LRML_0001_dynarterial_DICOM/IM-0001-0001-0001.dcm'
+    d = dcm.dcmread(dicom_file)
+    print("hello world")
+
+def task_16():
+    '''
+    binary2text
+    Zhe Zhu, 2020/09/02
+    '''
+    binary_file = '/mnt/sdc/Liver/dataset_log/dataset_info.txt'
+    with open(binary_file,'rb') as f:
+        dataset_info = pickle.load(f)
+    print(len(dataset_info))
+
+def task_17():
+    '''
+    Following Brandon's idea, to check reverse
+    Zhe Zhu, 2020/09/02
+    '''
+    input_dicom_folder = '/mnt/sdc/Liver/segmentation_processed/SSFSE/JKB01_003_03_B_SSFSE/dicoms/Jkb01_003_03_B 19550101/Liver Research Exams Taiwanj---No Leads Needed---/AX HASTE LIVER'
+    output_series_folder = '/mnt/sdc/Liver/tmp/20200902'
+
+    dicom_file_list = glob.glob(input_dicom_folder+'/*')
+    dicom_file_list.sort()
+    locs = [(d, float(dcm.dcmread(d).SliceLocation)) for d in dicom_file_list]
+
+    if locs[1] > locs[0]:
+        sliceForward = True
+    else:
+        sliceForward = False
+    print(sliceForward)
+
+def task_18():
+    '''
+    round 1 correction: automatically reverse the dice less than 0.5
+    Zhe Zhu, 2020/09/17
+    '''
+    input_dataset_folder = '/mnt/sdc/Liver/dataset/v2'
+    output_dataset_folder = '/mnt/sdc/Liver/dataset/correction'
+    patient_series_dice_file = '/mnt/sdc/Liver/dataset/patient_series_dice.txt'
+    threshold = 0.5
+    count = 0
+    with open(patient_series_dice_file,'r') as f:
+        patient_series_dice_list = f.readlines()
+
+    for patient_series_dice in patient_series_dice_list:
+        psd = patient_series_dice.split()
+        pid = psd[0]
+        sid = psd[1]
+        dice = float(psd[2])
+        if dice < threshold:
+            count += 1
+            input_series_folder = os.path.join(input_dataset_folder,pid,sid)
+            output_series_folder = os.path.join(output_dataset_folder,pid,sid)
+            img_num = len(glob.glob(input_series_folder+'/img/*'))
+            rank_vec = img_num - 1 - np.arange(img_num)
+            rearrange_mask(input_series_folder,output_series_folder,rank_vec)
+
+    print("{} series corrected".format(count))
 
 
 if __name__ == "__main__":
@@ -501,4 +652,11 @@ if __name__ == "__main__":
     #task_10()
     #task_11()
     #task_12()
-    task_13()
+    #task_13()
+    #task_14()
+    #task_15()
+    #task_11()
+    #task_12()
+    #task_16()
+    #task_17()
+    task_18()
