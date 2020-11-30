@@ -4,12 +4,12 @@ from DicomAnonymizer import Anonymizer
 def main():
     inputFolder = "/mnt/sdc/dataset/Duke_Abdominal_Original"
     outputFolder = "/mnt/sdc/dataset/Duke_Abdominal_Anonymized"
-    configFile = "duke_abdominal.config"
+    scriptFile = "duke_abdominal.script"
 
     tic = time.time()
     anonymizer = Anonymizer.DatasetAnonymizer(inputFolder,
                             outputFolder,
-                            configFile)
+                            scriptFile)
     anonymizer.anonymizeDataset()
     toc = time.time()
     print("Time Elapsed {0} seconds".format(toc-tic))

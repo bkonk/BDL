@@ -4,96 +4,134 @@ from tqdm import tqdm
 import glob
 import os
 import random
+import xml.etree.ElementTree as ET
 
 class DatasetAnonymizer:
     '''
     Dataset Anonymizer. This class is used to anonymize the entire dataset
+    inputFolder: original dataset folder
+    outputFolder: anonymized dataset folder
+    scriptFile: xml file describing how to deal with each tag
     '''
-    def __init__(self,inputFolder,outputFolder,configFile):
+    def __init__(self,inputFolder,outputFolder,scriptFile):
         self.inputFolder = inputFolder
         self.outputFolder = outputFolder
-        self.config = ConfigParser()
-        self.config.read(configFile)
-    def genRandonDigit(self,num):
-        digit = ""
-        for i in range(num):
-            digit += str(random.randint(0,9))
-        return digit
-    def genRandomVal(self,tag):
-        '''
-        Generate random value based on specified tag
-        return the generated str
-        '''
-        if tag=="00080050":
-            # Accession Number, 8 digit
-            accessionNumber = self.genRandonDigit(8)
-            return accessionNumber
-        if tag=="00200052":
-            # Frame of Reference UID,  1.1.111.111.111.1*39
-            frameOfReferenceUID = self.genRandonDigit(1)+"."+self.genRandonDigit(1)+"."+self.genRandonDigit(3)+\
-                "."+self.genRandonDigit(3)+"."+self.genRandonDigit(3)+"."+self.genRandonDigit(39)
-            return frameOfReferenceUID
-        if tag=="0020000e":
-            # Series Instance UID, same format as above
-            seriesInstanceUID = self.genRandonDigit(1)+"."+self.genRandonDigit(1)+"."+self.genRandonDigit(3)+\
-                "."+self.genRandonDigit(3)+"."+self.genRandonDigit(3)+"."+self.genRandonDigit(39)
-            return seriesInstanceUID
-        if tag=="00080018":
-            # SOP Instance UID, same format as above
-            sopInstanceUID = self.genRandonDigit(1)+"."+self.genRandonDigit(1)+"."+self.genRandonDigit(3)+\
-                "."+self.genRandonDigit(3)+"."+self.genRandonDigit(3)+"."+self.genRandonDigit(39)
-            return sopInstanceUID
-        if tag=="00880140":
-            # Storage Media File-set UID
-            storageMediaFilesetUID = self.genRandonDigit(1)+"."+self.genRandonDigit(1)+"."+self.genRandonDigit(3)+\
-                "."+self.genRandonDigit(3)+"."+self.genRandonDigit(3)+"."+self.genRandonDigit(39)
-            return storageMediaFilesetUID
-        if tag=="0020000d":
-            # Study Instance UID
-            studyInstanceUID = self.genRandonDigit(1)+"."+self.genRandonDigit(1)+"."+self.genRandonDigit(3)+\
-                "."+self.genRandonDigit(3)+"."+self.genRandonDigit(3)+"."+self.genRandonDigit(39)
-            return studyInstanceUID
+        self.scriptFile = scriptFile
+        self.lookupTableFile = ""
+        self.parseScript()
+        self.parseLookupTableFile()
+        print("Dicom Anonymizer Initialized")
+        print("Use Script File: {0}".format(self.scriptFile))
+        print("Use Lookup Table File: {0}".format(self.lookupTableFile))
 
-    def genConstVal(self,tag):
+    def parseScript(self):
         '''
-        Generate const value based on our pre-defined rule
-        return the generated str
+        Parse the xml script file
         '''
-        if tag=="00080022":
-            # Acquisition Date
-            acquisitionDate = "19900101"
-            return acquisitionDate
-        if tag=="00080023":
-            # Content Date
-            contentDate = "19900101"
-            return contentDate
+        tree = ET.parse(self.scriptFile)
+        root = tree.getroot()
+        self.tagsHandler = {}
+        for elem in root:
+            handler = self.processScriptElem(elem)
+            self.tagsHandler[handler["tagID"]] = handler
+
+    def processScriptElem(self,elem):
+        handler = {}
+        tagProcessMethod = elem.attrib['f']
+        if tagProcessMethod == "keep":
+            tagID = elem.attrib['t']
+            handler["tagID"] = tagID
+            handler["method"] = "keep"
+            return handler
+        elif tagProcessMethod == "const":
+            tagID = elem.attrib['t']
+            handler["tagID"] = tagID
+            handler["method"] = "const"
+            handler["value"] = elem.attrib['v']
+            return handler
+        elif tagProcessMethod == "empty":
+            tagID = elem.attrib['t']
+            handler["tagID"] = tagID
+            handler["method"] = "const"
+            handler["value"] = ""
+            return handler
+        elif tagProcessMethod == "lookup":
+            tagID = elem.attrib['t']
+            handler["tagID"] = tagID
+            handler["method"] = "lookup"
+            handler["lookupTableFile"] = elem.attrib['p']
+            if self.lookupTableFile=="":
+                self.lookupTableFile = elem.attrib['p']
+            return handler
+        elif tagProcessMethod == "less_than":
+            tagID = elem.attrib['t']
+            handler["tagID"] = tagID
+            handler["method"] = "less_than"
+            handler["value"] = elem.attrib['v']
+            return handler
+        else:
+            raise NameError('Unknown Method')
+
+    def parseLookupTableFile(self):
+        self.lookupTable = ConfigParser()
+        self.lookupTable.read(self.lookupTableFile)
+
+    def str2tag(self,sTag):
+        '''
+        Given the string format of the tag, convert to dicom Tag object
+        The string should be in the format of ****,****
+        '''
+        tagIntPre = int("0X" + sTag[0:4], 16)
+        tagIntSuf = int("0X"+sTag[5:])
+        tag = pydicom.tag.Tag((tagIntPre,tagIntSuf))
+        return tag
+
+    def extractDigits(self,mixed):
+        digits = ""
+        for s in mixed:
+            if s.isdigit():
+                digits.append(s)
+        return digits
     def anonymizeDicom(self,dcm,dict):
         '''
         Anonymize a dicom by pre-defined rules
         dcm: loaded dicom file to anonymize
-        dict: additional information, such as series_id
-        return an anonymized dicom file
+        dict: additional information obtained outside the dicom, such as exam_id, series_id from directory
+        return an anonymized dicom by creating a new one
         '''
-        all_mentioned_tags = {}
-        for t in dict["keep"]:
-            all_mentioned_tags[t] = 1
-        for t in dict["randomize"]:
-            all_mentioned_tags[t] = 1
-        for t in all_mentioned_tags["thresholding"]:
-            all_mentioned_tags[t] = 1
+        anonyDcmObj = pydicom.dataset.Dataset()
 
-        # remove private tags
-        dcm.remove_private_tags()
+        for sTag in self.tagsHandler:
+            vr = self.lookupTable["dictionary_vr"][sTag]
+            tag = self.str2tag(sTag)
 
+            if self.tagsHandler[sTag]["method"] == "keep":
+                if tag in dcm:
+                    elem = pydicom.DataElement(tag,vr,dcm[tag])
+                    anonyDcmObj.add(elem)
+            elif self.tagsHandler[sTag]["method"] == "const":
+                if tag in dcm:
+                    elem = pydicom.DataElement(tag,vr,self.tagsHandler[sTag]["value"])
+                    anonyDcmObj.add(elem)
+            elif self.tagsHandler[sTag]["method"] == "lookup":
+                if tag in dcm:
+                    tagName = self.lookupTable["Tag2Name"][tag]
+                    elem = pydicom.DataElement(tag,vr,self.lookupTable[tagName][dcm[tag]])
+                    anonyDcmObj.add(elem)
+            elif self.tagsHandler[sTag]["method"] == "less_than":
+                if tag in dcm:
+                    sVal = dcm[tag]
+                    iVal = int(sVal)
+                    maxVal = self.tagsHandler[sTag]["value"]
+                    if iVal > maxVal:
+                        modifiedVal = maxVal
+                    else:
+                        modifiedVal = iVal
+                    elem = pydicom.DataElement(tag,vr,str(modifiedVal))
+                    anonyDcmObj.add(elem)
+            else:
+                raise NameError('Unknown Method')
 
-        for tag in dcm:
-            if tag not in all_mentioned_tags:
-                # anonymize unmentioned tags
-                dcm[tag] = "anonymous"
-            if tag in dict["keep"]:
-                pass
-            if tag in dict["randomize"]:
-                pass
 
 
     def anonymizeDataset(self):
@@ -106,7 +144,7 @@ class DatasetAnonymizer:
         exam_folder_list = glob.glob(self.inputFolder+"/*")
         for exam_folder in tqdm(exam_folder_list):
             exam_id = os.path.basename(exam_folder)
-            anonymized_exam_id = self.config["exam_id"][exam_id]
+            anonymized_exam_id = self.lookupTable["PatientName"][exam_id]
             anonymized_exam_folder = os.path.join(self.outputFolder,anonymized_exam_id)
 
             if not os.path.exists(anonymized_exam_folder):
@@ -118,7 +156,7 @@ class DatasetAnonymizer:
                 series_id = series_id.replace(" ","") # trim space
                 output_series_folder = os.path.join(anonymized_exam_folder,series_id)
 
-                anonymization_info_dict = self.config
+                anonymization_info_dict = {}
                 anonymization_info_dict['series_id'] = series_id
                 anonymization_info_dict['exam_id'] = exam_id
                 if not os.path.exists(output_series_folder):
