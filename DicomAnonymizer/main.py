@@ -2,8 +2,8 @@ import time
 from DicomAnonymizer import Anonymizer
 
 def main():
-    inputFolder = "/mnt/sdc/dataset/Duke_Abdominal_Original"
-    outputFolder = "/mnt/sdc/dataset/Duke_Abdominal_Anonymized"
+    inputFolder = "/mnt/sdc/dataset/Duke_Abdominal_Test_Original"
+    outputFolder = "/mnt/sdc/dataset/Duke_Abdominal_Test_Anonymized"
     scriptFile = "duke_abdominal.script"
 
     tic = time.time()

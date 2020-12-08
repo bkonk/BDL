@@ -82,7 +82,7 @@ class DatasetAnonymizer:
         The string should be in the format of ****,****
         '''
         tagIntPre = int("0X" + sTag[0:4], 16)
-        tagIntSuf = int("0X"+sTag[5:])
+        tagIntSuf = int("0X"+sTag[5:],16)
         tag = pydicom.tag.Tag((tagIntPre,tagIntSuf))
         return tag
 
@@ -90,8 +90,31 @@ class DatasetAnonymizer:
         digits = ""
         for s in mixed:
             if s.isdigit():
-                digits.append(s)
+                digits += s
         return digits
+
+    def fmtSeriesID(self,s):
+        left_brace_index = s.find('(')
+        right_brace_index = s.find(')')
+        fmtSeriesID = ""
+        if left_brace_index == -1 and right_brace_index == -1:
+            # only number
+            fmtSeriesID = s.strip()
+        elif left_brace_index != -1 and right_brace_index != -1:
+            # slice or odd or even
+            number_str = s[:left_brace_index].strip()
+            odd_index = s.find('odd')
+            even_index = s.find('even')
+            bar_index = s.find('-')
+            if odd_index != -1:
+                fmtSeriesID = number_str.strip() + '_odd'
+            elif even_index != -1:
+                fmtSeriesID = number_str.strip() + '_even'
+            elif bar_index != -1:
+                begin_str = s[left_brace_index + 1:bar_index]
+                fmtSeriesID = number_str.strip() + '_' + begin_str
+        return fmtSeriesID
+
     def anonymizeDicom(self,dcm,dict):
         '''
         Anonymize a dicom by pre-defined rules
@@ -107,30 +130,52 @@ class DatasetAnonymizer:
 
             if self.tagsHandler[sTag]["method"] == "keep":
                 if tag in dcm:
-                    elem = pydicom.DataElement(tag,vr,dcm[tag])
+                    elem = dcm[tag]
                     anonyDcmObj.add(elem)
             elif self.tagsHandler[sTag]["method"] == "const":
                 if tag in dcm:
-                    elem = pydicom.DataElement(tag,vr,self.tagsHandler[sTag]["value"])
+                    elem = dcm[tag]
+                    elem.value = self.tagsHandler[sTag]["value"]
                     anonyDcmObj.add(elem)
             elif self.tagsHandler[sTag]["method"] == "lookup":
                 if tag in dcm:
-                    tagName = self.lookupTable["Tag2Name"][tag]
-                    elem = pydicom.DataElement(tag,vr,self.lookupTable[tagName][dcm[tag]])
+                    tagName = self.lookupTable["Tag2Name"][str(tag).replace(" ","")]
+                    elem = dcm[tag]
+                    elem.value = self.lookupTable[tagName][str(dcm[tag].value)]
                     anonyDcmObj.add(elem)
             elif self.tagsHandler[sTag]["method"] == "less_than":
                 if tag in dcm:
-                    sVal = dcm[tag]
-                    iVal = int(sVal)
-                    maxVal = self.tagsHandler[sTag]["value"]
+                    sVal = dcm[tag].value
+                    iVal = int(self.extractDigits(sVal))
+                    maxVal = int(self.tagsHandler[sTag]["value"])
                     if iVal > maxVal:
                         modifiedVal = maxVal
                     else:
                         modifiedVal = iVal
-                    elem = pydicom.DataElement(tag,vr,str(modifiedVal))
+                    elem = dcm[tag]
+                    elem.value = "{:03d}Y".format(modifiedVal)
                     anonyDcmObj.add(elem)
             else:
                 raise NameError('Unknown Method')
+        # handle Series Description
+        fmtSeriesID = self.fmtSeriesID(dict["series_id"])
+        fmtExamID = dict["exam_id"]
+        if fmtSeriesID not in self.lookupTable[fmtExamID]:
+            print("ERROR {} {}".format(dict["exam_id"],dict["series_id"]))
+        series_type = self.lookupTable[fmtExamID][fmtSeriesID]
+        tag = pydicom.tag.Tag(0x0008,0x103E)
+        vr = self.lookupTable["dictionary_vr"]["0008,103E"]
+        elem = pydicom.DataElement(tag,vr,series_type)
+        anonyDcmObj.add(elem)
+
+        # copy pixel_array
+        arr = dcm.pixel_array
+        anonyDcmObj.PixelData = arr.tobytes()
+
+        # set the required fields
+        anonyDcmObj.is_little_endian = dcm.is_little_endian
+        anonyDcmObj.is_implicit_VR = dcm.is_implicit_VR
+        return anonyDcmObj
 
 
 
@@ -166,6 +211,10 @@ class DatasetAnonymizer:
                 for dicom_file in dicom_file_list:
                     dcm = pydicom.dcmread(dicom_file)
                     anonymized_dcm = self.anonymizeDicom(dcm,anonymization_info_dict)
+
+                    dicom_file_name = os.path.basename(dicom_file)
+                    anonDcmFile = os.path.join(output_series_folder,dicom_file_name)
+                    anonymized_dcm.save_as(anonDcmFile)
 
 
 

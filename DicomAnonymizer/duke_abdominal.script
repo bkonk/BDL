@@ -77,20 +77,19 @@
     <e t="0028,1051" n="Window Width" f="keep"/>
     <e t="0020,0011" n="Series Number" f="keep"/>
     # tags that assign a constant value
-    <e t="00080032" n="Acquisition Time" f="const" v="00:00"/>
-    <e t="00080033" n="Content Time" f="const" v="00:00"/>
+    <e t="0008,0032" n="Acquisition Time" f="const" v="00:00"/>
+    <e t="0008,0033" n="Content Time" f="const" v="00:00"/>
     <e t="0008,0013" n="Instance Creation Time" f="const" v="00:00"/>
     <e t="0008,0031" n="Series Time" f="const" v="00:00"/>
     <e t="0008,0030" n="Study Time" f="const" v="00:00"/>
-    <e t="0008,0022" n="Acquisition Date" f="const" v="1/1/1990"/>
-    <e t="0008,0023" n="Content Date" f="const" v="1/1/1990"/>
-    <e t="0018,1200" n="Date of Last Calibration" f="const" v="1/1/1990"/>
+    <e t="0008,0022" n="Acquisition Date" f="const" v="19900101"/>
+    <e t="0008,0023" n="Content Date" f="const" v="19900101"/>
+    <e t="0018,1200" n="Date of Last Calibration" f="const" v="19900101"/>
     <e t="0012,0063" n="De-Identification Method" f="const" v="Comprehensive PHI De-identification"/>
-    <e t="0008,0012" n="Instance Creation Date" f="const" v="1/1/1990"/>
-    <e t="0010,0030" n="Patient Birth Date" f="const" v=""/>
+    <e t="0008,0012" n="Instance Creation Date" f="const" v="19900101"/>
     <e t="0012,0062" n="Patient Identity Removed" f="const" v="YES"/>
-    <e t="0008,0021" n="Series Date" f="const" v="1/1/1990"/>
-    <e t="0008,0020" n="Study Date" f="const" v="1/1/1990"/>
+    <e t="0008,0021" n="Series Date" f="const" v="19900101"/>
+    <e t="0008,0020" n="Study Date" f="const" v="19900101"/>
     # tags that assign a random value
     # tags that assign an empty value
     <e t="0008,0050" n="Accession Number" f="empty"/>
@@ -99,10 +98,13 @@
     <e t="0008,0018" n="SOP Instance UID" f="empty"/>
     <e t="0088,0140" n="Storage Media File-set UID" f="empty"/>
     <e t="0020,000d" n="Study Instance UID" f="empty"/>
+    <e t="0010,0020" n="Patient's ID" f="empty"/>
+    <e t="0020,0010" n="Study ID" f="empty"/>
+    <e t="0008,0090" n="Referring Physician Name" f="empty"/>
+    <e t="0010,0030" n="Patient Birth Date" f="empty"/>
+    <e t="0020,0020" n="Patient Orientation" f="empty"/>
     # tags that use an external lookup table to find the value
-    #<e t="0010,0020" n="Patient ID" f="lookup" p="duke_abdominal.config"/>
     <e t="0010,0010" n="Patient Name" f="lookup" p="duke_abdominal.config"/>
-    <e t="0008,103e" n="Series Description" f="lookup" p="duke_abdominal.config"/>
     # tags that adopt a conditional strategy
     <e t="0010,1010" n="Patient Age" f="less_than" v="89"/>
 </scripts>
