@@ -5,6 +5,8 @@ import glob
 import os
 import random
 import xml.etree.ElementTree as ET
+from pydicom import config
+config.enforce_valid_values = True
 
 class DatasetAnonymizer:
     '''
@@ -173,6 +175,8 @@ class DatasetAnonymizer:
         anonyDcmObj.PixelData = arr.tobytes()
 
         # set the required fields
+        anonyDcmObj.preamble = dcm.preamble
+        anonyDcmObj.file_meta = dcm.file_meta
         anonyDcmObj.is_little_endian = dcm.is_little_endian
         anonyDcmObj.is_implicit_VR = dcm.is_implicit_VR
         return anonyDcmObj
@@ -214,7 +218,7 @@ class DatasetAnonymizer:
 
                     dicom_file_name = os.path.basename(dicom_file)
                     anonDcmFile = os.path.join(output_series_folder,dicom_file_name)
-                    anonymized_dcm.save_as(anonDcmFile)
+                    pydicom.filewriter.dcmwrite(anonDcmFile,anonymized_dcm)
 
 
 
