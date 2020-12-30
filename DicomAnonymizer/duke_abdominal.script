@@ -75,6 +75,9 @@
     <e t="0020,0011" n="Series Number" f="keep"/>
     <e t="0008,0016" n="SOP Class UID" f="keep"/>
     <e t="0008,1030" n="Study Description" f="keep"/>
+    <e t="0002,0002" n="Media Storage SOP Class UID" f="keep"/>
+    <e t="0002,0010" n="Transfer Syntax UID" f="keep"/>
+    <e t="0002,0012" n="Implementation Class UID" f="keep"/>
     # tags that assign a constant value
     <e t="0008,0032" n="Acquisition Time" f="const" v="00:00"/>
     <e t="0008,0033" n="Content Time" f="const" v="00:00"/>
@@ -102,6 +105,7 @@
     <e t="0008,0090" n="Referring Physician Name" f="empty"/>
     <e t="0010,0030" n="Patient Birth Date" f="empty"/>
     <e t="0020,0020" n="Patient Orientation" f="empty"/>
+    <e t="0002,0003" n="Media Storage SOP Instance UID" f="empty"/>
     # tags that use an external lookup table to find the value
     <e t="0010,0010" n="Patient Name" f="lookup" p="duke_abdominal.config"/>
     # tags that adopt a conditional strategy

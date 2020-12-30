@@ -19,6 +19,8 @@ def test():
     test_file = "/mnt/sdc/dataset/Duke_Abdominal_Test_Anonymized/093/5/0001.dicom"
     ds = pydicom.dcmread(test_file)
     print("OK")
+
+
 if __name__ == "__main__":
-    test()
-    #main()
+    #test()
+    main()

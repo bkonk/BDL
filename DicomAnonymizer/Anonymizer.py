@@ -126,6 +126,18 @@ class DatasetAnonymizer:
         '''
         anonyDcmObj = pydicom.dataset.Dataset()
 
+        # copy pixel_array
+        arr = dcm.pixel_array
+        anonyDcmObj.PixelData = arr.tobytes()
+
+        # set the required fields
+        anonyDcmObj.preamble = dcm.preamble
+        anonyDcmObj.file_meta = dcm.file_meta
+        anonyDcmObj.is_little_endian = dcm.is_little_endian
+        anonyDcmObj.is_implicit_VR = dcm.is_implicit_VR
+
+        # Media Storage SOP Instance UID
+
         for sTag in self.tagsHandler:
             vr = self.lookupTable["dictionary_vr"][sTag]
             tag = self.str2tag(sTag)
@@ -134,11 +146,19 @@ class DatasetAnonymizer:
                 if tag in dcm:
                     elem = dcm[tag]
                     anonyDcmObj.add(elem)
+                elif tag in dcm.file_meta:
+                    # because file_meta has already been copied
+                    pass
             elif self.tagsHandler[sTag]["method"] == "const":
-                if tag in dcm:
-                    elem = dcm[tag]
-                    elem.value = self.tagsHandler[sTag]["value"]
-                    anonyDcmObj.add(elem)
+                if tag in dcm or tag in dcm.file_meta:
+                    if tag in dcm:
+                        elem = dcm[tag]
+                        elem.value = self.tagsHandler[sTag]["value"]
+                        anonyDcmObj.add(elem)
+                    else:
+                        # The tag belongs to file_meta
+                        anonyDcmObj.file_meta[tag].value = self.tagsHandler[sTag]["value"]
+
             elif self.tagsHandler[sTag]["method"] == "lookup":
                 if tag in dcm:
                     tagName = self.lookupTable["Tag2Name"][str(tag).replace(" ","")]
@@ -170,15 +190,7 @@ class DatasetAnonymizer:
         elem = pydicom.DataElement(tag,vr,series_type)
         anonyDcmObj.add(elem)
 
-        # copy pixel_array
-        arr = dcm.pixel_array
-        anonyDcmObj.PixelData = arr.tobytes()
 
-        # set the required fields
-        anonyDcmObj.preamble = dcm.preamble
-        anonyDcmObj.file_meta = dcm.file_meta
-        anonyDcmObj.is_little_endian = dcm.is_little_endian
-        anonyDcmObj.is_implicit_VR = dcm.is_implicit_VR
         return anonyDcmObj
 
 
