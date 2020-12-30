@@ -195,9 +195,15 @@ class DatasetAnonymizer:
 
 
 
-    def anonymizeDataset(self):
+    def anonymizeDatasetV1(self):
+        '''
+        Anonymize a dataset that has the following hierarchy:
+        Dataset/Exam/Series/DicomFiles
+        This follows the original Duke Abdonimal dataset structure
+        '''
         dataset_name = os.path.basename(self.inputFolder)
         print("Anonymizing {0}".format(dataset_name))
+        print("Assuming the dataset has the Dataset/Exam/Series/DicomFiles structure")
 
         if not os.path.exists(self.outputFolder):
             os.makedirs(self.outputFolder)
@@ -231,6 +237,59 @@ class DatasetAnonymizer:
                     dicom_file_name = os.path.basename(dicom_file)
                     anonDcmFile = os.path.join(output_series_folder,dicom_file_name)
                     pydicom.filewriter.dcmwrite(anonDcmFile,anonymized_dcm)
+
+    def anonymizeDatasetV2(self):
+        '''
+        Anonymize a dataset that has the following hierarchy:
+        Dataset/Patient/Exam/Series/DicomFiles
+        This aims to deal with a more general medical imaging dataset structure
+        '''
+        dataset_name = os.path.basename(self.inputFolder)
+        print("Anonymizing {0}".format(dataset_name))
+        print("Assuming the dataset has the Dataset/Patient/Exam/Series/DicomFiles structure")
+
+        if not os.path.exists(self.outputFolder):
+            os.makedirs(self.outputFolder)
+
+        patient_folder_list = glob.glob(self.inputFolder+"/*")
+        for patient_folder in patient_folder_list:
+            patient_id = os.path.basename(patient_folder)
+            anonymized_patient_id = self.lookupTable["PatientName"][patient_id]
+            output_patient_folder = os.path.join(self.outputFolder,anonymized_patient_id)
+
+            if not os.path.exists(output_patient_folder):
+                os.makedirs(output_patient_folder)
+
+            exam_folder_list = glob.glob(patient_folder+"/*")
+
+            for exam_folder in tqdm(exam_folder_list):
+                exam_id = os.path.basename(exam_folder)
+                output_exam_folder = os.path.join(output_patient_folder,exam_id)
+
+                if not os.path.exists(output_exam_folder):
+                    os.makedirs(output_exam_folder)
+
+                series_folder_list = glob.glob(exam_folder+"/*")
+
+                for series_folder in series_folder_list:
+                    series_id = os.path.basename(series_folder)
+                    series_id = series_id.replace(" ","") # trim space
+                    output_series_folder = os.path.join(output_exam_folder,series_id)
+
+                    anonymization_info_dict = {}
+                    anonymization_info_dict['series_id'] = series_id
+                    anonymization_info_dict['exam_id'] = exam_id
+                    if not os.path.exists(output_series_folder):
+                        os.makedirs(output_series_folder)
+
+                    dicom_file_list = glob.glob(series_folder+"/*")
+                    for dicom_file in dicom_file_list:
+                        dcm = pydicom.dcmread(dicom_file)
+                        anonymized_dcm = self.anonymizeDicom(dcm,anonymization_info_dict)
+
+                        dicom_file_name = os.path.basename(dicom_file)
+                        anonDcmFile = os.path.join(output_series_folder,dicom_file_name)
+                        pydicom.filewriter.dcmwrite(anonDcmFile,anonymized_dcm)
 
 
 
