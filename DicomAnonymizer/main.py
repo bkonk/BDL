@@ -11,7 +11,7 @@ def main():
     anonymizer = Anonymizer.DatasetAnonymizer(inputFolder,
                             outputFolder,
                             scriptFile)
-    anonymizer.anonymizeDataset()
+    anonymizer.anonymizeDatasetV2()
     toc = time.time()
     print("Time Elapsed {0} seconds".format(toc-tic))
 

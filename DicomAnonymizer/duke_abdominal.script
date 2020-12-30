@@ -73,6 +73,7 @@
     <e t="0028,1050" n="Window Center" f="keep"/>
     <e t="0028,1051" n="Window Width" f="keep"/>
     <e t="0020,0011" n="Series Number" f="keep"/>
+    <e t="0008,103E" n="Series Description" f="keep"/>
     <e t="0008,0016" n="SOP Class UID" f="keep"/>
     <e t="0008,1030" n="Study Description" f="keep"/>
     <e t="0002,0002" n="Media Storage SOP Class UID" f="keep"/>

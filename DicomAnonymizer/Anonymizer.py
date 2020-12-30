@@ -136,7 +136,8 @@ class DatasetAnonymizer:
         anonyDcmObj.is_little_endian = dcm.is_little_endian
         anonyDcmObj.is_implicit_VR = dcm.is_implicit_VR
 
-        # Media Storage SOP Instance UID
+        # Test
+        #anonyDcmObj.file_meta.MediaStorageSOPClassUID = []
 
         for sTag in self.tagsHandler:
             vr = self.lookupTable["dictionary_vr"][sTag]
@@ -179,18 +180,6 @@ class DatasetAnonymizer:
                     anonyDcmObj.add(elem)
             else:
                 raise NameError('Unknown Method')
-        # handle Series Description
-        fmtSeriesID = self.fmtSeriesID(dict["series_id"])
-        fmtExamID = dict["exam_id"]
-        if fmtSeriesID not in self.lookupTable[fmtExamID]:
-            print("ERROR {} {}".format(dict["exam_id"],dict["series_id"]))
-        series_type = self.lookupTable[fmtExamID][fmtSeriesID]
-        tag = pydicom.tag.Tag(0x0008,0x103E)
-        vr = self.lookupTable["dictionary_vr"]["0008,103E"]
-        elem = pydicom.DataElement(tag,vr,series_type)
-        anonyDcmObj.add(elem)
-
-
         return anonyDcmObj
 
 
