@@ -106,7 +106,7 @@
     <e t="0010,0030" n="Patient Birth Date" f="empty"/>
     <e t="0020,0020" n="Patient Orientation" f="empty"/>
     # tags that use an external lookup table to find the value
-    <e t="0010,0010" n="Patient Name" f="lookup" p="/Users/bbk9/Downloads/BDL-master/DicomAnonymizer/duke_abdominal_brandon.config"/>
+    <e t="0010,0010" n="Patient Name" f="lookup" p="/Users/bbk9/Downloads/BDL/DicomAnonymizer/duke_abdominal_brandon.config"/>
     # tags that adopt a conditional strategy
     <e t="0010,1010" n="Patient Age" f="less_than" v="89"/>
 </scripts>
