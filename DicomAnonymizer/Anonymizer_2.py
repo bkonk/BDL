@@ -6,8 +6,10 @@ import os
 import random
 import xml.etree.ElementTree as ET
 from pydicom import config
+from pydicom.dataset import Dataset, FileDataset, FileMetaDataset
 config.enforce_valid_values = True
 import numpy as np
+import tempfile
 
 
 
@@ -132,7 +134,18 @@ class DatasetAnonymizer:
         dict: additional information obtained outside the dicom, such as exam_id, series_id from directory
         return an anonymized dicom by creating a new one
         '''
-        anonyDcmObj = pydicom.dataset.Dataset()
+#         suffix = '.dcm'
+#         filename_little_endian = tempfile.NamedTemporaryFile(suffix=suffix).name
+#         print(dcm.file_meta)
+        file_meta = FileMetaDataset()
+        file_meta.MediaStorageSOPClassUID = '1.2.840.10008.5.1.4.1.1.2'
+        file_meta.MediaStorageSOPInstanceUID = "1.2.3"
+        file_meta.ImplementationClassUID = "1.2.3.4"
+#         anonyDcmObj = pydicom.dataset.Dataset()
+        anonyDcmObj = FileDataset([], {}, file_meta=file_meta, preamble=b"\0" * 128)
+#         print(anonyDcmObj.file_meta)
+#         FileDataset(filename_little_endian, {},
+#                  file_meta=file_meta, preamble=b"\0" * 128)
 
         # copy pixel_array
         arr = dcm.pixel_array
@@ -140,7 +153,10 @@ class DatasetAnonymizer:
 
         # set the required fields
         anonyDcmObj.preamble = dcm.preamble
-        anonyDcmObj.file_meta = dcm.file_meta
+        
+        
+        
+        anonyDcmObj.file_meta = file_meta#dcm.file_meta
         anonyDcmObj.is_little_endian = dcm.is_little_endian
         anonyDcmObj.is_implicit_VR = dcm.is_implicit_VR
 
@@ -157,6 +173,9 @@ class DatasetAnonymizer:
                     elem = dcm[tag]
                     anonyDcmObj.add(elem)
                 elif tag in dcm.file_meta:
+                    elem = dcm.file_meta[tag]
+#                     setattr(anonyDcmObj.file_meta, tag, elem)
+                    anonyDcmObj.file_meta.add(elem)
                     # because file_meta has already been copied
                     pass
             elif self.tagsHandler[sTag]["method"] == "const":
@@ -166,8 +185,12 @@ class DatasetAnonymizer:
                         elem.value = self.tagsHandler[sTag]["value"]
                         anonyDcmObj.add(elem)
                     else:
+                        elem = dcm.file_meta[tag]
+                        elem.value = self.tagsHandler[sTag]["value"]
+#                         setattr(anonyDcmObj.file_meta, tag, elem.value)
+                        anonyDcmObj.file_meta.add(elem)
                         # The tag belongs to file_meta
-                        anonyDcmObj.file_meta[tag].value = self.tagsHandler[sTag]["value"]
+#                         anonyDcmObj.file_meta[tag].value = self.tagsHandler[sTag]["value"]
 
             elif self.tagsHandler[sTag]["method"] == "lookup":
                 if tag in dcm:
